@@ -26,9 +26,11 @@ void SimpleScreensaver::setLogo(cv::Mat logo) {
       cv::resize(m_logo, m_logo, cv::Size(), 0.5, 0.5, cv::INTER_LINEAR);
     }
   }
+
   m_blank = cv::Mat::zeros(m_logo.size(), m_logo.type());
   m_logo_roi = cv::Rect2i(m_logo_roi.tl(), m_logo.size());
 }
+
 cv::Mat SimpleScreensaver::logo() { return m_logo.clone(); }
 
 void SimpleScreensaver::setSize(cv::Size sz) {
@@ -41,65 +43,45 @@ void SimpleScreensaver::restart() {
   std::mt19937 gen{rd()};
   std::uniform_real_distribution<double> d_uniform(0.0, 1.0);
 
-  int roi_x =
-      std::max(0, static_cast<int>(d_uniform(gen) * (m_frame.cols - 1)));
-  int roi_y =
-      std::max(0, static_cast<int>(d_uniform(gen) * (m_frame.rows - 1)));
+  int roi_x = std::max(
+      0, static_cast<int>(d_uniform(gen) * (m_frame.cols - m_logo.cols - 1)));
+  int roi_y = std::max(
+      0, static_cast<int>(d_uniform(gen) * (m_frame.rows - m_logo.rows - 1)));
+
   m_logo_roi = cv::Rect2i(cv::Point2i(roi_x, roi_y), m_logo.size());
   m_angle = d_uniform(gen) * 2 * M_PI;
-
-  // double v_x = std::cos(m_angle);
-  // double v_y = std::sin(m_angle);
+  std::cout << "restart done" << std::endl;
 }
 
 void SimpleScreensaver::next(cv::Mat& frame) {
+  std::cout << "SimpleScreensaver::next" << std::endl;
+  std::cout << "m_logo_roi: " << m_logo_roi << std::endl;
+  std::cout << "m_logo: " << m_logo.size() << std::endl;
+  std::cout << "m_blank: " << m_blank.size() << std::endl;
+  std::cout << "m_frame: " << m_frame.size() << std::endl;
+
   m_blank.copyTo(m_frame(m_logo_roi));
 
   auto new_roi = move(m_logo_roi, std::cos(m_angle) * m_steps,
                       std::sin(m_angle) * m_steps);
 
   // bounce horizontally
-  if (new_roi.br().x >= m_frame.cols) {
-    if (in_range(m_angle, 0.0, 0.5 * M_PI)) {
-      m_angle = m_angle + 0.5 * M_PI;
-    } else if (in_range(m_angle, 1.5 * M_PI, 2.0 * M_PI)) {
-      m_angle = m_angle - 0.5 * M_PI;
-    }
-    new_roi = move(m_logo_roi, std::cos(m_angle) * m_steps,
-                   std::sin(m_angle) * m_steps);
-
-  } else if (new_roi.tl().x < 0) {
-    if (in_range(m_angle, 0.5 * M_PI, M_PI)) {
-      m_angle = m_angle - 0.5 * M_PI;
-    } else if (in_range(m_angle, M_PI, 1.5 * M_PI)) {
-      m_angle = m_angle + 0.5 * M_PI;
-    }
-    // new_roi = move(m_logo_roi, std::cos(m_angle) * m_steps,
-    //                std::sin(m_angle) * m_steps);
-    new_roi = move(m_logo_roi, std::cos(m_angle) * m_steps,
-                   std::sin(m_angle) * m_steps);
+  if (new_roi.br().x >= m_frame.cols || new_roi.tl().x < 0) {
+    m_angle = -m_angle + M_PI;
   }
 
   // bounce vertically
-  if (new_roi.br().y >= m_frame.rows) {
-    if (in_range(m_angle, 1.5 * M_PI, 2.0 * M_PI)) {
-      m_angle = m_angle - 1.5 * M_PI;
-    } else if (in_range(m_angle, 1.0 * M_PI, 1.5 * M_PI)) {
-      m_angle = m_angle - 0.5 * M_PI;
-    }
-    // new_roi = move(m_logo_roi, std::cos(m_angle) * m_steps,
-    //                std::sin(m_angle) * m_steps);
-    new_roi = move(m_logo_roi, std::cos(m_angle) * m_steps,
-                   std::sin(m_angle) * m_steps);
-  } else if (new_roi.tl().y < 0) {
-    if (in_range(m_angle, 0.0 * M_PI, 0.5 * M_PI)) {
-      m_angle = m_angle + 1.5 * M_PI;
-    } else if (in_range(m_angle, 0.5 * M_PI, 1.0 * M_PI)) {
-      m_angle = m_angle + 0.5 * M_PI;
-    }
-    new_roi = move(m_logo_roi, std::cos(m_angle) * m_steps,
-                   std::sin(m_angle) * m_steps);
+  if (new_roi.tl().y < 0 || new_roi.br().y >= m_frame.rows) {
+    m_angle = -m_angle;
   }
+  if (m_angle < 0.0) {
+    m_angle += 2 * M_PI;
+  } else if (m_angle >= 2 * M_PI) {
+    m_angle -= 2 * M_PI;
+  }
+
+  new_roi = move(m_logo_roi, std::cos(m_angle) * m_steps,
+                 std::sin(m_angle) * m_steps);
 
   m_logo_roi = new_roi;
   std::cout << "m_logo_roi: " << m_logo_roi << std::endl;

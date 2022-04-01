@@ -43,10 +43,6 @@ cv::Rect_<T> move(const cv::Rect_<T>& r, N step_x, N step_y) {
       r.size());
 }
 
-// template <typename T>
-// T cap(T val, T min, T max) {
-//   return std::min(std::max(val, min), max);
-// }
 template <typename T>
 bool in_range(T val, T min, T max) {
   return min <= val && val < max;

@@ -24,11 +24,14 @@ int main() {
 
   cv::Mat frame;
   while (true) {
-    cap.read(frame);
+    if (!cap.read(frame)) {
+      break;
+    }
 
     imshow("receiver", frame);
 
-    if (cv::waitKey(1) == 27) {
+    int key = cv::waitKey(1);
+    if (key == 'q' || key == 'Q') {
       break;
     }
   }

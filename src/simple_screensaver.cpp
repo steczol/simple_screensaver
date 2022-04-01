@@ -8,45 +8,65 @@
 //
 #include <random>
 
-// template <typename T, typename N>
-// cv::Rect_<T> move(const cv::Rect_<T>& r, N step_x, N step_y) {
-//   return cv::Rect_<T>(
-//       cv::Point_<T>(static_cast<T>(r.x + step_x), static_cast<T>(r.y +
-//       step_y)), r.size());
-// }
+const std::string DefaultWriterGstPipeline =
+    "appsrc ! videoconvert ! "
+    "video/x-raw,format=YUY2,width=640,height=480,framerate=30/1 ! jpegenc ! "
+    "rtpjpegpay ! udpsink host=127.0.0.1 port=5000";
 
-// template <typename T, typename N>
-// void resize(cv::Rect_<T>& r, N sz) {
-//   r = cv::Rect_<T>(cv::Point_<T>(r.x, r.y),
-//                    cv::Size(static_cast<T>(sz), static_cast<T>(sz)));
-// }
+std::unique_ptr<cv::VideoWriter> DefaultVideoWriter() {
+  return std::make_unique<cv::VideoWriter>(DefaultWriterGstPipeline,
+                                           0,   // fourcc
+                                           30,  // fps
+                                           cv::Size(640, 480),
+                                           true);  // isColor
+}
 
 int main(int argc, char** argv) {
   CLI::App app{"Simple screensaver"};
+  // Read arguments
   std::string path_to_logo;
   app.add_option("-l,--logo", path_to_logo, "Path to logo");
-  CLI11_PARSE(app, argc, argv);
+  //
+  std::string gst_pipe_def;
+  app.add_option("-g,--gst-pipeline", gst_pipe_def,
+                 "GStreamer pipeline definition");
+  int gst_fourcc = 0;
+  app.add_option("-c,--gst-fourcc", gst_fourcc, "GStreamer fourcc number");
+  int gst_fps = 30;
+  app.add_option("-f,--gst-fps", gst_fps, "GStreamer frames per second");
+  int gst_width = 640;
+  app.add_option("--gst-width", gst_width, "GStreamer frame width");
+  int gst_height = 480;
+  app.add_option("--gst-height", gst_height, "GStreamer frame height");
 
-  std::cout << "path to logo: " << path_to_logo << std::endl;
+  CLI11_PARSE(app, argc, argv);
+  // std::cout << "path to logo: " << path_to_logo << std::endl;
 
   // GStreamer
-  cv::VideoWriter writer(
-      "appsrc ! videoconvert ! "
-      "video/x-raw,format=YUY2,width=640,height=480,framerate=30/1 ! jpegenc ! "
-      "rtpjpegpay ! udpsink host=127.0.0.1 port=5000",
-      0,   // fourcc
-      30,  // fps
-      cv::Size(640, 480),
-      true);  // isColor
+  // cv::VideoWriter writer(
+  //     "appsrc ! videoconvert ! "
+  //     "video/x-raw,format=YUY2,width=640,height=480,framerate=30/1 ! jpegenc
+  //     ! " "rtpjpegpay ! udpsink host=127.0.0.1 port=5000", 0,   // fourcc 30,
+  //     // fps cv::Size(640, 480), true);  // isColor
 
-  if (!writer.isOpened()) {
+  std::unique_ptr<cv::VideoWriter> writer;
+  if (gst_pipe_def.empty()) {
+    writer = DefaultVideoWriter();
+  } else {
+    writer = std::make_unique<cv::VideoWriter>(gst_pipe_def, 0, 30,
+                                               cv::Size(640, 480), true);
+  }
+
+  if (!writer->isOpened()) {
     std::cerr << "VideoWriter not opened" << std::endl;
     exit(-1);
   }
 
   std::unique_ptr<SimpleScreensaver> scr_saver =
       std::make_unique<SimpleScreensaver>();
-  if (!path_to_logo.empty()) {
+  if (path_to_logo.empty()) {
+    scr_saver->setLogo(cv::Mat());
+  } else {
     cv::Mat logo = cv::imread(path_to_logo, cv::IMREAD_COLOR);
     scr_saver->setLogo(logo);
   }
@@ -56,87 +76,13 @@ int main(int argc, char** argv) {
   while (true) {
     scr_saver->next(canvas);
 
-    writer.write(canvas);
+    writer->write(canvas);
     cv::imshow("Screensaver", canvas);
     int key = cv::waitKey(33);
     if (key == 'q' || key == 'Q') {
       break;
     }
   }
-
-  /*
-    // Geometry
-    int scene_width = 640;
-    int scene_height = 480;
-    cv::Mat canvas = cv::Mat::zeros(cv::Size(scene_width, scene_height),
-    CV_8UC3);
-
-    // read logo
-    cv::Mat logo;
-    if (path_to_logo.empty()) {
-      int width = 50;
-      int height = 50;
-      logo = cv::Mat::ones(cv::Size(width, height), CV_8UC3);
-      logo.setTo(cv::Scalar(255, 255, 255));
-    } else {
-      logo = cv::imread(path_to_logo, cv::IMREAD_COLOR);
-      std::cout << "logo read | size: " << logo.size() << std::endl;
-      // make sure the logo fits into window
-      while (logo.cols >= 0.6 * scene_width || logo.rows >= 0.6 * scene_height)
-    { cv::resize(logo, logo, cv::Size(), 0.5, 0.5, cv::INTER_LINEAR);
-      }
-    }
-    cv::Mat blank = cv::Mat::zeros(logo.size(), logo.type());
-
-    // define random number generators
-    std::random_device rd{};
-    std::mt19937 gen{rd()};
-    std::uniform_int_distribution<> f_roi_start_x(0, scene_width - logo.cols -
-    1); std::uniform_int_distribution<> f_roi_start_y(0, scene_height -
-    logo.rows - 1);
-
-    std::uniform_real_distribution<double> f_angle(0.0, 2 * M_PI);
-
-    // Create roi
-    cv::Rect2i roi =
-        cv::Rect2i(cv::Point2i(f_roi_start_x(gen), f_roi_start_y(gen)),
-                   cv::Size(logo.cols, logo.rows));
-    cv::Rect2i new_roi;
-
-    double angle = f_angle(gen);
-    double v_x = std::cos(angle);
-    double v_y = std::sin(angle);
-    // Define speed
-    double steps = 7.0;
-
-    // logo.copyTo(canvas(roi));
-
-    while (true) {
-      blank.copyTo(canvas(roi));
-
-      new_roi = move(roi, v_x * steps, v_y * steps);
-      // bounce horizontally
-      if (new_roi.br().x >= scene_width || new_roi.tl().x < 0) {
-        v_x = -v_x;
-        new_roi = move(roi, v_x * steps, v_y * steps);
-      }
-      // bounce vertically
-      if (new_roi.br().y >= scene_height || new_roi.tl().y < 0) {
-        v_y = -v_y;
-        new_roi = move(roi, v_x * steps, v_y * steps);
-      }
-      roi = new_roi;
-      logo.copyTo(canvas(roi));
-
-
-      writer.write(canvas);
-      cv::imshow("Screensaver", canvas);
-      int key = cv::waitKey(33);
-      if (key == 'q' || key == 'Q') {
-        break;
-      }
-    }
-  */
 
   return 0;
 }
