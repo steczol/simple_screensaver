@@ -13,11 +13,11 @@ const std::string DefaultWriterGstPipeline =
     "video/x-raw,format=YUY2,width=640,height=480,framerate=30/1 ! jpegenc ! "
     "rtpjpegpay ! udpsink host=127.0.0.1 port=5000";
 
-std::unique_ptr<cv::VideoWriter> DefaultVideoWriter() {
+std::unique_ptr<cv::VideoWriter> DefaultVideoWriter(int width, int height) {
   return std::make_unique<cv::VideoWriter>(DefaultWriterGstPipeline,
                                            0,   // fourcc
                                            30,  // fps
-                                           cv::Size(640, 480),
+                                           cv::Size(width, height),
                                            true);  // isColor
 }
 
@@ -29,6 +29,14 @@ int main(int argc, char** argv) {
   std::string path_to_logo;
   app.add_option("-l,--logo", path_to_logo, "Path to logo");
 
+  // Read scene geometry
+  int scene_width{640};
+  app.add_option("--scene-width", scene_width, "Scene width")
+      ->check(CLI::Range(320, 3840));
+  int scene_height{480};
+  app.add_option("--scene-height", scene_height, "Scene height")
+      ->check(CLI::Range(240, 2160));
+
   // Read display options
   bool out_gst{false};
   app.add_flag("--output-gstreamer", out_gst, "Enable GStreamer output");
@@ -39,17 +47,18 @@ int main(int argc, char** argv) {
   std::string gst_pipe_def;
   app.add_option("-g,--gst-pipeline", gst_pipe_def,
                  "GStreamer pipeline definition");
-  int gst_fourcc = 0;
+  int gst_fourcc{0};
   app.add_option("-c,--gst-fourcc", gst_fourcc, "GStreamer fourcc number");
-  int gst_fps = 30;
+  int gst_fps{30};
   app.add_option("-f,--gst-fps", gst_fps, "GStreamer frames per second");
-  int gst_width = 640;
+  int gst_width{640};
   app.add_option("--gst-width", gst_width, "GStreamer frame width");
-  int gst_height = 480;
+  int gst_height{480};
   app.add_option("--gst-height", gst_height, "GStreamer frame height");
 
   CLI11_PARSE(app, argc, argv);
 
+  // Validate given arguments
   if (!out_gst && !out_display) {
     std::cout << "[E] choose at least one output" << std::endl;
     exit(app.exit(CLI::CallForHelp()));
@@ -61,11 +70,11 @@ int main(int argc, char** argv) {
     if (gst_pipe_def.empty()) {
       std::cout << "Using GStreamer Pipeline:\n"
                 << DefaultWriterGstPipeline << std::endl;
-      writer = DefaultVideoWriter();
+      writer = DefaultVideoWriter(scene_width, scene_height);
     } else {
       std::cout << "Using GStreamer Pipeline:\n" << gst_pipe_def << std::endl;
-      writer = std::make_unique<cv::VideoWriter>(gst_pipe_def, 0, 30,
-                                                 cv::Size(640, 480), true);
+      writer = std::make_unique<cv::VideoWriter>(
+          gst_pipe_def, 0, 30, cv::Size(scene_width, scene_height), true);
     }
 
     if (!writer->isOpened()) {
@@ -76,7 +85,7 @@ int main(int argc, char** argv) {
 
   // Create source
   std::unique_ptr<SimpleScreensaver> scr_saver =
-      std::make_unique<SimpleScreensaver>();
+      std::make_unique<SimpleScreensaver>(cv::Size(scene_width, scene_height));
   if (path_to_logo.empty()) {
     scr_saver->setLogo(cv::Mat());
   } else {
@@ -94,7 +103,7 @@ int main(int argc, char** argv) {
       writer->write(canvas);
     }
     if (out_display) {
-      cv::imshow("Display", canvas);
+      cv::imshow("Sender - Display", canvas);
     }
     int key = cv::waitKey(33);
     if (key == 'q' || key == 'Q') {

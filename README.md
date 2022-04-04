@@ -58,9 +58,14 @@ By default the receiver pipeline is defined as:
 ./gst_receiver --gst-pipeline "udpsrc port=5000 ! application/x-rtp,media=video,payload=26,clock-rate=90000,encoding-name=JPEG,framerate=30/1 ! rtpjpegdepay ! jpegdec ! videoconvert ! appsink"
 ```
 
+The command can be executed by the GStreamer itself:
+```bash
+gst-launch-1.0 udpsrc port=5000 ! application/x-rtp,media=video,payload=26,clock-rate=90000,encoding-name=JPEG,framerate=30/1 ! rtpjpegdepay ! jpegdec ! videoconvert ! ximagesink
+```
+
 **Sender:**
 ```bash
-./gst_sender --logo ../dummylogo.png --gst-pipeline "appsrc ! videoconvert ! video/x-raw,format=YUY2,width=640,height=480,framerate=30/1 ! jpegenc ! rtpjpegpay ! udpsink host=127.0.0.1 port=5000" --gst-fourcc 0 --gst-fps 30 --gst-width 640 --gst-height 480 --output-gstreamer --output-display
+./gst_sender --logo ../dummylogo.png --scene-width 1280 --scene-height 960 --gst-pipeline "appsrc ! videoconvert ! video/x-raw,format=YUY2,width=640,height=480,framerate=30/1 ! jpegenc ! rtpjpegpay ! udpsink host=127.0.0.1 port=5000" --gst-fourcc 0 --gst-fps 30 --gst-width 640 --gst-height 480 --output-gstreamer --output-display
 ```
 
 ## Dummy Logo
