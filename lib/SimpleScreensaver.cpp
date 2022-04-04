@@ -50,20 +50,13 @@ void SimpleScreensaver::restart() {
 
   m_logo_roi = cv::Rect2i(cv::Point2i(roi_x, roi_y), m_logo.size());
   m_angle = d_uniform(gen) * 2 * M_PI;
-  std::cout << "restart done" << std::endl;
 }
 
 void SimpleScreensaver::next(cv::Mat& frame) {
-  std::cout << "SimpleScreensaver::next" << std::endl;
-  std::cout << "m_logo_roi: " << m_logo_roi << std::endl;
-  std::cout << "m_logo: " << m_logo.size() << std::endl;
-  std::cout << "m_blank: " << m_blank.size() << std::endl;
-  std::cout << "m_frame: " << m_frame.size() << std::endl;
-
   m_blank.copyTo(m_frame(m_logo_roi));
 
-  auto new_roi = move(m_logo_roi, std::cos(m_angle) * m_steps,
-                      std::sin(m_angle) * m_steps);
+  auto new_roi = translate(m_logo_roi, std::cos(m_angle) * m_steps,
+                           std::sin(m_angle) * m_steps);
 
   // bounce horizontally
   if (new_roi.br().x >= m_frame.cols || new_roi.tl().x < 0) {
@@ -80,11 +73,10 @@ void SimpleScreensaver::next(cv::Mat& frame) {
     m_angle -= 2 * M_PI;
   }
 
-  new_roi = move(m_logo_roi, std::cos(m_angle) * m_steps,
-                 std::sin(m_angle) * m_steps);
+  new_roi = translate(m_logo_roi, std::cos(m_angle) * m_steps,
+                      std::sin(m_angle) * m_steps);
 
   m_logo_roi = new_roi;
-  std::cout << "m_logo_roi: " << m_logo_roi << std::endl;
   m_logo.copyTo(m_frame(m_logo_roi));
   frame = m_frame;
 }

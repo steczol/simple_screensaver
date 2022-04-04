@@ -3,7 +3,7 @@
 
 #include <opencv2/imgproc.hpp>
 
-// Screensaver - rectangle bouncing off sites
+// Screensaver - rectangle bouncing off the borders
 
 class SimpleScreensaver {
  public:
@@ -37,7 +37,7 @@ class SimpleScreensaver {
 };
 
 template <typename T, typename N>
-cv::Rect_<T> move(const cv::Rect_<T>& r, N step_x, N step_y) {
+cv::Rect_<T> translate(const cv::Rect_<T>& r, N step_x, N step_y) {
   return cv::Rect_<T>(
       cv::Point_<T>(static_cast<T>(r.x + step_x), static_cast<T>(r.y + step_y)),
       r.size());

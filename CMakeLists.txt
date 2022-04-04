@@ -10,11 +10,11 @@ find_package(OpenCV)
 include_directories(${OpenCV_INCLUDE_DIRS})
 
 
-add_executable(simple_screensaver src/simple_screensaver.cpp lib/SimpleScreensaver.cpp)
-target_link_libraries(simple_screensaver ${OpenCV_LIBS})
+# add_executable(simple_screensaver src/simple_screensaver.cpp lib/SimpleScreensaver.cpp)
+# target_link_libraries(simple_screensaver ${OpenCV_LIBS})
 
 # GStreamer
-add_executable(gst_sender src/gst_sender.cpp)
+add_executable(gst_sender src/gst_sender.cpp lib/SimpleScreensaver.cpp)
 target_link_libraries(gst_sender ${OpenCV_LIBS})
 
 add_executable(gst_receiver src/gst_receiver.cpp)
