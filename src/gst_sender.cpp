@@ -1,12 +1,17 @@
 #include "../include/CLI11.hpp"
 #include "../lib/SimpleScreensaver.hpp"
 //
+#include <chrono>
+#include <cstdlib>
 #include <iostream>
 #include <opencv2/highgui.hpp>
 #include <opencv2/imgcodecs.hpp>
 #include <opencv2/imgproc.hpp>
 //
 #include <random>
+// debug
+#include <random>
+#include <ratio>
 
 const std::string DefaultWriterGstPipeline =
     "appsrc ! videoconvert ! "
@@ -74,12 +79,13 @@ int main(int argc, char** argv) {
     } else {
       std::cout << "Using GStreamer Pipeline:\n" << gst_pipe_def << std::endl;
       writer = std::make_unique<cv::VideoWriter>(
-          gst_pipe_def, 0, 30, cv::Size(scene_width, scene_height), true);
+          gst_pipe_def, /*fourcc*/ 0, /*fps*/ 30,
+          cv::Size(scene_width, scene_height), /*isColor*/ true);
     }
 
     if (!writer->isOpened()) {
       std::cerr << "VideoWriter not opened" << std::endl;
-      exit(-1);
+      EXIT_FAILURE;
     }
   }
 
@@ -96,7 +102,14 @@ int main(int argc, char** argv) {
 
   cv::Mat canvas;
   std::cout << "[I] press q or Ctrl+c to exit" << std::endl;
+  // debug
+  auto start = std::chrono::high_resolution_clock::now();
   while (true) {
+    auto elapsed = std::chrono::high_resolution_clock::now() - start;
+    auto milliseconds =
+        std::chrono::duration_cast<std::chrono::milliseconds>(elapsed).count();
+    std::cout << "loop time: " << milliseconds << " ms\n";
+
     scr_saver->next(canvas);
 
     if (writer != nullptr) {
