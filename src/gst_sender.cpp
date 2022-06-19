@@ -12,6 +12,26 @@
 // debug
 #include <random>
 #include <ratio>
+#include <thread>
+
+/*
+  DEBUG
+*/
+using TimePointHighPrecision =
+    std::chrono::time_point<std::chrono::high_resolution_clock>;
+TimePointHighPrecision tick() {
+  return std::chrono::high_resolution_clock::now();
+}
+
+long tock_us(const TimePointHighPrecision& start) {
+  auto stop = std::chrono::high_resolution_clock::now();
+  auto diff =
+      std::chrono::duration_cast<std::chrono::microseconds>(stop - start);
+  return diff.count();
+}
+/*
+ END DEBUG
+*/
 
 const std::string DefaultWriterGstPipeline =
     "appsrc ! videoconvert ! "
@@ -102,26 +122,45 @@ int main(int argc, char** argv) {
 
   cv::Mat canvas;
   std::cout << "[I] press q or Ctrl+c to exit" << std::endl;
-  // debug
-  auto start = std::chrono::high_resolution_clock::now();
-  while (true) {
-    auto elapsed = std::chrono::high_resolution_clock::now() - start;
-    auto milliseconds =
-        std::chrono::duration_cast<std::chrono::milliseconds>(elapsed).count();
-    std::cout << "loop time: " << milliseconds << " ms\n";
 
+  int counter = 0;
+  while (true) {
+    auto now = std::chrono::system_clock::now();
+    auto wake_time = now + std::chrono::milliseconds(33);
+
+    // auto tick_generator = tick();
     scr_saver->next(canvas);
+    // auto tock_generator = tock_us(tick_generator);
+    // std::cout << counter << " generator took " << tock_generator << " us"
+    //           << std::endl;
 
     if (writer != nullptr) {
+      // auto tick_writer = tick();
       writer->write(canvas);
+      // auto tock_writer = tock_us(tick_writer);
+      // std::cout << counter << " writer took " << tock_writer << " us"
+      //           << std::endl;
     }
+
     if (out_display) {
+      // auto tick_imshow = tick();
       cv::imshow("Sender - Display", canvas);
+      // auto tock_imshow = tock_us(tick_imshow);
+      // std::cout << counter << " imshow took " << tock_imshow << " us"
+      //           << std::endl;
+      int key = cv::waitKey(1);
+      if (key == 'q' || key == 'Q') {
+        break;
+      }
     }
-    int key = cv::waitKey(33);
-    if (key == 'q' || key == 'Q') {
-      break;
-    }
+
+    std::this_thread::sleep_until(wake_time);
+
+    // auto elapsed = std::chrono::high_resolution_clock::now() - now;
+    // auto milliseconds =
+    //     std::chrono::duration_cast<std::chrono::milliseconds>(elapsed).count();
+    // std::cout << counter << " loop time: " << milliseconds << " ms\n";
+    counter++;
   }
 
   return 0;
